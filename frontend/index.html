@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Driven Vulnerability Discovery System — MVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
+  --bg-main: #0b1120;
+  --bg-card: #131c31;
+  --bg-elevated: #1e293b;
+  --border-subtle: #24324f;
+  --border-focus: #3b82f6;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --brand-primary: #2563eb;
+  --brand-hover: #1d4ed8;
+  --sev-crit-bg: #450a0a; --sev-crit-fg: #fca5a5; --sev-crit-border: #7f1d1d;
+  --sev-high-bg: #431407; --sev-high-fg: #fdba74; --sev-high-border: #9a3412;
+  --sev-med-bg: #422006; --sev-med-fg: #fde047; --sev-med-border: #a16207;
+  --sev-low-bg: #052e16; --sev-low-fg: #86efac; --sev-low-border: #166534;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-main);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+header.top-nav {
+  background: #0d1527;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-badge {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  font-size: 18px;
+  box-shadow: 0 0 16px #3b82f640;
+}
+.brand-text h1 { font-size: 16px; font-weight: 700; color: #fff; }
+.brand-text p { font-size: 12px; color: var(--text-muted); }
+.nav-links {
+  display: flex;
+  gap: 8px;
+}
+.nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.nav-btn:hover, .nav-btn.active {
+  background: var(--bg-elevated);
+  color: #fff;
+  border-color: var(--border-subtle);
+}
+main.app-shell {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  flex: 1;
+}
+.view-container { display: none; }
+.view-container.active { display: block; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Cards & Panels */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  margin-bottom: 20px;
+}
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+.panel-header h2 { font-size: 18px; font-weight: 700; }
+.panel-header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.btn-primary { background: var(--brand-primary); color: #fff; }
+.btn-primary:hover { background: var(--brand-hover); }
+.btn-secondary { background: var(--bg-elevated); color: var(--text-main); border-color: var(--border-subtle); }
+.btn-secondary:hover { background: #28374f; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Grid of Projects */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+.project-card {
+  background: #111a2e;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.project-card:hover {
+  border-color: var(--border-focus);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px #00000060;
+}
+.project-card h3 { font-size: 16px; margin-bottom: 6px; }
+.project-card p.desc { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; min-height: 38px; }
+.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
+
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: #0a0f1d;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+.form-input:focus { border-color: var(--border-focus); outline: none; }
+.checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #0f182c;
+  border: 1px solid #1e3a8a;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  margin: 18px 0;
+}
+.checkbox-card input[type="checkbox"] { margin-top: 3px; cursor: pointer; }
+.checkbox-card label { font-size: 13px; line-height: 1.4; color: #cbd5e1; cursor: pointer; }
+
+/* Stats Bar */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-box {
+  background: #0f172a;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  text-align: left;
+}
+.stat-box span { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); font-weight: 700; }
+.stat-box b { display: block; font-size: 24px; font-weight: 800; margin-top: 4px; }
+.stat-crit { border-left: 4px solid #ef4444; }
+.stat-high { border-left: 4px solid #f97316; }
+.stat-med  { border-left: 4px solid #eab308; }
+.stat-low  { border-left: 4px solid #22c55e; }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.badge-critical { background: var(--sev-crit-bg); color: var(--sev-crit-fg); border: 1px solid var(--sev-crit-border); }
+.badge-high { background: var(--sev-high-bg); color: var(--sev-high-fg); border: 1px solid var(--sev-high-border); }
+.badge-medium { background: var(--sev-med-bg); color: var(--sev-med-fg); border: 1px solid var(--sev-med-border); }
+.badge-low { background: var(--sev-low-bg); color: var(--sev-low-fg); border: 1px solid var(--sev-low-border); }
+.badge-status { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+.badge-cwe { background: #1e1b4b; color: #a5b4fc; border: 1px solid #312e81; font-family: var(--font-mono); }
+
+/* Progress Bar */
+.progress-container {
+  background: #0f172a;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin: 20px 0;
+}
+.progress-bar-outer {
+  background: #1e293b;
+  border-radius: 8px;
+  height: 12px;
+  overflow: hidden;
+  margin: 14px 0;
+}
+.progress-bar-inner {
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  height: 100%;
+  width: 0%;
+  transition: width .3s ease;
+}
+.stages-flow {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stage-item {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stage-item.completed { color: #22c55e; }
+.stage-item.active { color: #38bdf8; font-weight: 700; }
+
+/* Findings List */
+.filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.filter-select {
+  background: #0f182c;
+  color: #fff;
+  border: 1px solid var(--border-subtle);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.finding-card {
+  background: #0f172a;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: border-color .15s ease;
+}
+.finding-card:hover { border-color: #3b82f680; }
+.finding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.finding-title { font-size: 15px; font-weight: 700; color: #fff; }
+.finding-loc { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.finding-desc { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4; }
+
+/* Code and Excerpts */
+pre {
+  background: #050811;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #bae6fd;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 8px 0;
+}
+details { margin-top: 8px; }
+summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #93c5fd;
+  cursor: pointer;
+  padding: 4px 0;
+}
+summary:hover { text-decoration: underline; }
+
+/* Modal Drawer */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #00000088;
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  max-width: 840px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: 0 20px 40px #000000aa;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+.btn-close {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: pointer;
+}
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+.empty-state h3 { font-size: 17px; margin-bottom: 6px; color: #fff; }
+.banner-info {
+  background: #0c1a30;
+  border: 1px solid #1d4ed8;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: #93c5fd;
+  margin-bottom: 16px;
+}
+</style>
+</head>
+<body>
+
+<header class="top-nav">
+  <div class="brand">
+    <div class="logo-badge">🛡️</div>
+    <div class="brand-text">
+      <h1>AI-Driven Vulnerability Discovery System</h1>
+      <p>Defensive Repository Security Intelligence · Project 2026-27-CS-10</p>
+    </div>
+  </div>
+  <nav class="nav-links">
+    <button class="nav-btn active" onclick="switchView('dashboardView')">Projects</button>
+    <button class="nav-btn" onclick="openNewProjectModal()">+ New Project</button>
+    <button class="nav-btn" onclick="switchView('aboutView')">System & Team</button>
+  </nav>
+</header>
+
+<main class="app-shell">
+
+  <!-- VIEW 1: PROJECTS DASHBOARD -->
+  <section id="dashboardView" class="view-container active">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>Monitored Projects</h2>
+          <p>Repositories profiled and scanned under defensive authorization.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openNewProjectModal()">+ Create Project</button>
+      </div>
+      <div id="projectsGrid" class="projects-grid">
+        <div class="empty-state">Loading projects...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 2: PROJECT & SCAN DETAILS -->
+  <section id="projectView" class="view-container">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <button class="btn btn-secondary" onclick="switchView('dashboardView')" style="margin-bottom: 8px;">← All Projects</button>
+          <h2 id="viewProjectName">Project Overview</h2>
+          <p id="viewProjectId" class="finding-loc"></p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button id="btnTriggerScan" class="btn btn-primary" onclick="triggerScan()">Run Scan</button>
+          <button id="btnDownloadReport" class="btn btn-secondary" onclick="downloadJSONReport()">Download JSON Report</button>
+        </div>
+      </div>
+
+      <!-- Scan Progress / Stage Tracker -->
+      <div id="scanProgressCard" class="progress-container" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <b id="progressStageLabel">Initializing Scan...</b>
+          <span id="progressPercent" style="font-family:var(--font-mono); font-weight:700;">0%</span>
+        </div>
+        <div class="progress-bar-outer">
+          <div id="progressBarInner" class="progress-bar-inner"></div>
+        </div>
+        <div class="stages-flow">
+          <div class="stage-item" id="stage_validating">1. Validating</div>
+          <div class="stage-item" id="stage_profiling">2. Profiling</div>
+          <div class="stage-item" id="stage_scanning">3. Scanning</div>
+          <div class="stage-item" id="stage_normalizing">4. Normalizing</div>
+          <div class="stage-item" id="stage_retrieving_context">5. AST Context</div>
+          <div class="stage-item" id="stage_reporting">6. Reporting</div>
+        </div>
+      </div>
+
+      <!-- Overview Stats -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-box"><span>Total Findings</span><b id="statTotal">0</b></div>
+        <div class="stat-box stat-crit"><span>Critical</span><b id="statCrit" style="color:#f87171;">0</b></div>
+        <div class="stat-box stat-high"><span>High</span><b id="statHigh" style="color:#fb923c;">0</b></div>
+        <div class="stat-box stat-med"><span>Medium</span><b id="statMed" style="color:#facc15;">0</b></div>
+        <div class="stat-box stat-low"><span>Low</span><b id="statLow" style="color:#4ade80;">0</b></div>
+      </div>
+
+      <!-- Repository Profile Card -->
+      <div class="banner-info" id="repoProfileBanner">
+        <b>Repository Profile:</b> <span id="profileSummary">Analyzing structure...</span>
+      </div>
+
+      <!-- Findings Explorer -->
+      <div class="panel-header" style="margin-top:20px;">
+        <h3>Findings Explorer</h3>
+        <div class="filter-row" style="margin:0;">
+          <select id="filterSeverity" class="filter-select" onchange="applyFilters()">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="filterStatus" class="filter-select" onchange="applyFilters()">
+            <option value="">All Review States</option>
+            <option value="needs_review">Needs Review</option>
+            <option value="candidate">Candidate</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="rejected">Rejected</option>
+            <option value="fixed">Fixed</option>
+          </select>
+          <input type="text" id="searchFindings" class="filter-select" placeholder="Search file or keyword..." oninput="applyFilters()" style="min-width:180px;">
+        </div>
+      </div>
+
+      <div id="findingsContainer">
+        <div class="empty-state">No findings recorded yet. Run a scan to inspect source files.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 3: SYSTEM & TEAM OVERVIEW -->
+  <section id="aboutView" class="view-container">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>System Architecture & Team Attribution</h2>
+        <p>Swami Keshwanand Institute of Technology, Management & Gramothan (SKIT), Jaipur</p>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:20px;">
+        <div class="stat-box">
+          <span style="color:#60a5fa;">Module A</span>
+          <b style="font-size:16px;">Chaudhari Krishna</b>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">23ESKIT038 — Backend and AI Orchestration</p>
+        </div>
+        <div class="stat-box">
+          <span style="color:#a78bfa;">Module B</span>
+          <b style="font-size:16px;">Bhavesh Shah</b>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">23ESKIT034 — Frontend and Reporting</p>
+        </div>
+        <div class="stat-box">
+          <span style="color:#34d399;">Module C</span>
+          <b style="font-size:16px;">Gunwant Singh Hada</b>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">23ESKIT055 — Security Analysis and Repository Intelligence</p>
+        </div>
+      </div>
+      <div class="banner-info">
+        <b>Defensive Platform Boundaries:</b> This platform profiles and analyzes software repositories under strict owner authorization. It operates on static evidence construction and does NOT execute untrusted repository scripts, tests, package hooks, or arbitrary external network payloads.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- CREATE PROJECT MODAL -->
+<div id="createProjectModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Create Monitored Project</h2>
+      <button class="btn-close" onclick="closeModal('createProjectModal')">&times;</button>
+    </div>
+    <form id="projectCreateForm" onsubmit="handleProjectSubmit(event)">
+      <div class="form-group">
+        <label>Project Name *</label>
+        <input type="text" id="inputProjName" class="form-input" placeholder="e.g. Core Payment Service" required>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="inputProjDesc" class="form-input" placeholder="e.g. Microservice backend source analysis">
+      </div>
+      <div class="form-group">
+        <label>Repository Archive (ZIP) *</label>
+        <input type="file" id="inputRepoZip" class="form-input" accept=".zip" required>
+        <p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Max upload: 40 MB. Supported languages: Python, JavaScript, TypeScript, Java.</p>
+      </div>
+      <div class="checkbox-card">
+        <input type="checkbox" id="checkAuth" required>
+        <label for="checkAuth">
+          <b>Defensive Authorization Confirmation:</b> I explicitly confirm that I am the legal owner of this source code or possess explicit written authorization to perform security testing on this repository.
+        </label>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('createProjectModal')">Cancel</button>
+        <button type="submit" id="btnSubmitProject" class="btn btn-primary">Create & Analyze</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- FINDING DETAIL MODAL / DRAWER -->
+<div id="findingDetailModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <span id="detailBadge" class="badge"></span>
+        <span id="detailCWE" class="badge badge-cwe"></span>
+        <h2 id="detailTitle" style="margin-top:6px;">Finding Details</h2>
+      </div>
+      <button class="btn-close" onclick="closeModal('findingDetailModal')">&times;</button>
+    </div>
+    <div>
+      <p class="finding-loc" id="detailLocation"></p>
+      <p class="finding-desc" id="detailDescription"></p>
+
+      <div style="background:#0f172a; padding:12px; border-radius:6px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <b style="font-size:12px; text-transform:uppercase; color:var(--text-muted);">Reviewer Lifecycle Status</b>
+          <span id="detailCurrentStatus" class="badge badge-status">needs_review</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <select id="selectLifecycleStatus" class="filter-select" style="flex:1;">
+            <option value="needs_review">Needs Review</option>
+            <option value="candidate">Candidate</option>
+            <option value="confirmed">Confirmed (Verified Issue)</option>
+            <option value="rejected">Rejected (False Positive)</option>
+            <option value="fixed">Fixed</option>
+            <option value="accepted_risk">Accepted Risk</option>
+          </select>
+          <button class="btn btn-primary" onclick="updateFindingStatusAction()">Update Status</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:6px; color:#38bdf8;">Remediation Guidance</h4>
+        <p id="detailRemediation" style="font-size:13px; color:#cbd5e1;"></p>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:6px;">Evidence Snippet (Redacted)</h4>
+        <pre id="detailEvidence"></pre>
+      </div>
+
+      <div id="detailContextContainer">
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:6px;">Enclosing Scope & Context Bundles</h4>
+        <div id="detailContextList"></div>
+      </div>
+
+      <div id="detailAIContainer" style="margin-top:14px; display:none;">
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:6px; color:#c084fc;">AI Security Reasoner Assessment</h4>
+        <div id="detailAIContent" class="banner-info" style="border-color:#7c3aed; color:#e9d5ff;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let currentScanId = null;
+let currentScanFindings = [];
+let activeFindingId = null;
+let pollTimer = null;
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function switchView(viewId) {
+  document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(viewId).classList.add('active');
+  if (viewId === 'dashboardView') loadProjects();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openNewProjectModal() {
+  document.getElementById('projectCreateForm').reset();
+  openModal('createProjectModal');
+}
+
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects');
+    const projects = await res.json();
+    const grid = document.getElementById('projectsGrid');
+    if (!projects || projects.length === 0) {
+      grid.innerHTML = '<div class="empty-state"><h3>No projects yet</h3><p>Create a project and upload an authorized repository ZIP to begin analysis.</p></div>';
+      return;
+    }
+    grid.innerHTML = projects.map(p => `
+      <div class="project-card" onclick="openProject('${p.id}')">
+        <h3>${escapeHtml(p.name)}</h3>
+        <p class="desc">${escapeHtml(p.description || 'No description provided.')}</p>
+        <div class="card-meta">
+          <span>Scans: ${p.scan_count || 0}</span>
+          <span>Created: ${new Date(p.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function openProject(projectId) {
+  currentProjectId = projectId;
+  switchView('projectView');
+  try {
+    const res = await fetch(`/api/projects/${projectId}`);
+    const proj = await res.json();
+    document.getElementById('viewProjectName').textContent = proj.name;
+    document.getElementById('viewProjectId').textContent = `ID: ${proj.id} · Created: ${new Date(proj.created_at).toLocaleString()}`;
+    
+    // Check if scans exist
+    const scansRes = await fetch(`/api/projects`);
+    // Find latest scan
+    const projEntry = (await scansRes.json()).find(x => x.id === projectId);
+    if (projEntry && projEntry.scan_count > 0) {
+      // Load latest scan report
+      const repRes = await fetch(`/api/projects/${projectId}/report`);
+      if (repRes.ok) {
+        const report = await repRes.json();
+        currentScanId = report.scan_id;
+        renderScanResults(report);
+      }
+    } else {
+      resetScanView();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function resetScanView() {
+  document.getElementById('statTotal').textContent = '0';
+  document.getElementById('statCrit').textContent = '0';
+  document.getElementById('statHigh').textContent = '0';
+  document.getElementById('statMed').textContent = '0';
+  document.getElementById('statLow').textContent = '0';
+  document.getElementById('profileSummary').textContent = 'Repository ready for scan.';
+  document.getElementById('findingsContainer').innerHTML = '<div class="empty-state">No scans run yet for this repository. Click "Run Scan" to start.</div>';
+}
+
+async function handleProjectSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('inputProjName').value;
+  const desc = document.getElementById('inputProjDesc').value;
+  const file = document.getElementById('inputRepoZip').files[0];
+  const auth = document.getElementById('checkAuth').checked;
+
+  if (!auth) {
+    alert("Authorization must be explicitly confirmed.");
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitProject');
+  btn.disabled = true;
+  btn.textContent = 'Uploading & Profiling...';
+
+  try {
+    // 1. Create project
+    const pRes = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description: desc, authorization_acknowledged: true })
+    });
+    if (!pRes.ok) {
+      const err = await pRes.json();
+      throw new Error(err.detail || 'Failed to create project');
+    }
+    const proj = await pRes.json();
+
+    // 2. Upload repository ZIP
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('authorization_acknowledged', 'true');
+    const uRes = await fetch(`/api/projects/${proj.id}/repositories`, { method: 'POST', body: fd });
+    if (!uRes.ok) {
+      const err = await uRes.json();
+      throw new Error(err.detail || 'Failed to upload archive');
+    }
+    const snap = await uRes.json();
+
+    // 3. Start scan
+    const sRes = await fetch(`/api/projects/${proj.id}/scans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ snapshot_id: snap.id, configuration: { enable_ai: true } })
+    });
+    const scan = await sRes.json();
+
+    closeModal('createProjectModal');
+    currentProjectId = proj.id;
+    currentScanId = scan.id;
+    openProject(proj.id);
+    startScanPolling(scan.id);
+
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create & Analyze';
+  }
+}
+
+async function triggerScan() {
+  if (!currentProjectId) return;
+  const btn = document.getElementById('btnTriggerScan');
+  btn.disabled = true;
+  try {
+    const sRes = await fetch(`/api/projects/${currentProjectId}/scans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ configuration: { enable_ai: true } })
+    });
+    if (!sRes.ok) throw new Error('Scan launch failed.');
+    const scan = await sRes.json();
+    currentScanId = scan.id;
+    startScanPolling(scan.id);
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+  }
+}
+
+function startScanPolling(scanId) {
+  const card = document.getElementById('scanProgressCard');
+  card.style.display = 'block';
+  if (pollTimer) clearInterval(pollTimer);
+
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/scans/${scanId}`);
+      if (!res.ok) return;
+      const s = await res.json();
+      
+      document.getElementById('progressStageLabel').textContent = `Stage: ${s.status.toUpperCase()}`;
+      document.getElementById('progressPercent').textContent = `${s.progress}%`;
+      document.getElementById('progressBarInner').style.width = `${s.progress}%`;
+
+      // Update stage indicators
+      ['validating', 'profiling', 'scanning', 'normalizing', 'retrieving_context', 'reporting'].forEach(st => {
+        const el = document.getElementById(`stage_${st}`);
+        if (el) {
+          if (s.status === st) el.className = 'stage-item active';
+          else if (s.progress >= 70 && st === 'scanning') el.className = 'stage-item completed';
+          else if (s.status === 'completed') el.className = 'stage-item completed';
+        }
+      });
+
+      if (s.status === 'completed') {
+        clearInterval(pollTimer);
+        document.getElementById('btnTriggerScan').disabled = false;
+        setTimeout(() => { card.style.display = 'none'; }, 1800);
+        const repRes = await fetch(`/api/scans/${scanId}/report`);
+        if (repRes.ok) {
+          const report = await repRes.json();
+          renderScanResults(report);
+        }
+      } else if (s.status === 'failed' || s.status === 'cancelled') {
+        clearInterval(pollTimer);
+        document.getElementById('btnTriggerScan').disabled = false;
+        alert(`Scan ${s.status}: ${s.error_summary || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, 1000);
+}
+
+function renderScanResults(report) {
+  const s = report.summary || {};
+  document.getElementById('statTotal').textContent = s.total || 0;
+  document.getElementById('statCrit').textContent = s.critical || 0;
+  document.getElementById('statHigh').textContent = s.high || 0;
+  document.getElementById('statMed').textContent = s.medium || 0;
+  document.getElementById('statLow').textContent = s.low || 0;
+
+  const prof = report.profile || {};
+  const langs = Object.entries(prof.languages || {}).map(([k, v]) => `${k} (${v})`).join(', ') || 'None';
+  const fworks = (prof.frameworks || []).join(', ') || 'Generic';
+  document.getElementById('profileSummary').textContent = `${langs} · Frameworks: ${fworks} · Files: ${prof.file_count || 0}`;
+
+  currentScanFindings = report.findings || [];
+  applyFilters();
+}
+
+function applyFilters() {
+  const sev = document.getElementById('filterSeverity').value.toLowerCase();
+  const st = document.getElementById('filterStatus').value.toLowerCase();
+  const q = document.getElementById('searchFindings').value.toLowerCase();
+
+  const filtered = currentScanFindings.filter(f => {
+    if (sev && f.severity.toLowerCase() !== sev) return false;
+    if (st && f.lifecycle_status.toLowerCase() !== st) return false;
+    if (q) {
+      const match = (f.title + ' ' + f.file_path + ' ' + (f.cwe || '')).toLowerCase();
+      if (!match.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const container = document.getElementById('findingsContainer');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state">No matching findings found.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(f => `
+    <div class="finding-card" onclick="openFindingDetail('${f.id}')" style="cursor:pointer;">
+      <div class="finding-header">
+        <div>
+          <span class="badge badge-${f.severity}">${f.severity}</span>
+          ${f.cwe ? `<span class="badge badge-cwe">${escapeHtml(f.cwe)}</span>` : ''}
+          <span class="badge badge-status">${escapeHtml(f.lifecycle_status)}</span>
+          <span class="finding-title" style="margin-left:8px;">${escapeHtml(f.title)}</span>
+        </div>
+        <span style="font-size:12px; color:var(--text-dim);">${Math.round(f.confidence * 100)}% conf</span>
+      </div>
+      <p class="finding-loc">📄 ${escapeHtml(f.file_path)}:${f.start_line}</p>
+      <p class="finding-desc">${escapeHtml(f.description)}</p>
+      ${f.evidence_excerpt_redacted ? `<pre>${escapeHtml(f.evidence_excerpt_redacted)}</pre>` : ''}
+    </div>
+  `).join('');
+}
+
+async function openFindingDetail(findingId) {
+  activeFindingId = findingId;
+  try {
+    const res = await fetch(`/api/findings/${findingId}`);
+    if (!res.ok) return;
+    const f = await res.json();
+
+    document.getElementById('detailBadge').className = `badge badge-${f.severity}`;
+    document.getElementById('detailBadge').textContent = f.severity;
+    document.getElementById('detailCWE').textContent = f.cwe || 'CWE Unassigned';
+    document.getElementById('detailTitle').textContent = f.title;
+    document.getElementById('detailLocation').textContent = `File: ${f.file_path} (Lines ${f.start_line}-${f.end_line}) · Source: ${f.rule_id}`;
+    document.getElementById('detailDescription').textContent = f.description;
+    document.getElementById('detailRemediation').textContent = f.remediation;
+    document.getElementById('detailEvidence').textContent = f.evidence_excerpt_redacted || 'No excerpt available.';
+    document.getElementById('detailCurrentStatus').textContent = f.lifecycle_status;
+    document.getElementById('selectLifecycleStatus').value = f.lifecycle_status;
+
+    // Render Context Bundles
+    const ctxList = document.getElementById('detailContextList');
+    if (f.context_bundles && f.context_bundles.length > 0) {
+      ctxList.innerHTML = f.context_bundles.map(cb => `
+        <details>
+          <summary>${escapeHtml(cb.context_type)}: ${escapeHtml(cb.file_path)} (${cb.retrieval_method})</summary>
+          <pre>${escapeHtml(cb.content_redacted)}</pre>
+        </details>
+      `).join('');
+    } else {
+      ctxList.innerHTML = '<p style="font-size:12px; color:var(--text-dim);">No extended context bundles recorded.</p>';
+    }
+
+    // Render AI Assessment
+    const aiCont = document.getElementById('detailAIContainer');
+    if (f.ai_assessment && f.ai_assessment.structured_result) {
+      aiCont.style.display = 'block';
+      const ai = f.ai_assessment.structured_result;
+      document.getElementById('detailAIContent').innerHTML = `
+        <p><b>Verdict:</b> ${escapeHtml(ai.verdict)} · <b>Model:</b> ${escapeHtml(f.ai_assessment.model)}</p>
+        <p style="margin-top:6px;"><b>Root Cause:</b> ${escapeHtml(ai.root_cause)}</p>
+        <p style="margin-top:6px;"><b>Source-to-Sink Path:</b> ${escapeHtml(ai.source_to_sink_path || 'N/A')}</p>
+        <p style="margin-top:6px;"><b>Suggested Test:</b> ${escapeHtml(ai.regression_test_idea || 'None')}</p>
+      `;
+    } else {
+      aiCont.style.display = 'none';
+    }
+
+    openModal('findingDetailModal');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function updateFindingStatusAction() {
+  if (!activeFindingId) return;
+  const newStatus = document.getElementById('selectLifecycleStatus').value;
+  try {
+    const res = await fetch(`/api/findings/${activeFindingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lifecycle_status: newStatus, actor: 'human-security-reviewer' })
+    });
+    if (!res.ok) throw new Error('Status update failed');
+    const updated = await res.json();
+    document.getElementById('detailCurrentStatus').textContent = updated.lifecycle_status;
+    
+    // Update local list
+    const item = currentScanFindings.find(x => x.id === activeFindingId);
+    if (item) item.lifecycle_status = updated.lifecycle_status;
+    applyFilters();
+    alert('Lifecycle status updated successfully.');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function downloadJSONReport() {
+  if (!currentScanId) {
+    alert('No completed scan to download.');
+    return;
+  }
+  window.open(`/api/scans/${currentScanId}/report`, '_blank');
+}
+
+// Initial load
+loadProjects();
+</script>
+</body>
+</html>
